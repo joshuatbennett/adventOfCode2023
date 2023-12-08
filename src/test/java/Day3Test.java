@@ -4,14 +4,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class Day3Test {
+    Day3 day = new Day3();
     @Test
     public void part1() {
-        Day3 day3 = new Day3();
-        assertEquals(4361, day3.solvePart1("C:\\Users\\benne\\IdeaProjects\\adventOfCode\\src\\test\\resources\\day3example.csv"));
+        assertEquals(4361, day.solvePart1("C:\\Users\\benne\\IdeaProjects\\adventOfCode\\src\\test\\resources\\day3example.csv"));
     }
     @Test
     public void part2() {
-        Day3 day3 = new Day3();
-        assertEquals(467835, day3.solvePart2("C:\\Users\\benne\\IdeaProjects\\adventOfCode\\src\\test\\resources\\day3example.csv"));
+        assertEquals(467835, day.solvePart2("C:\\Users\\benne\\IdeaProjects\\adventOfCode\\src\\test\\resources\\day3example.csv"));
     }
 }

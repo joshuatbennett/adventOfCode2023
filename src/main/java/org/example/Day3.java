@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Day3 {
+public class Day3 implements Day {
     private static void addPaddingRows(List<List<Character>> inputMatrix) {
         int rows = inputMatrix.get(0).size();
         List<Character> paddingRow = Collections.nCopies(rows, '.').stream().toList();
@@ -12,7 +12,8 @@ public class Day3 {
         inputMatrix.add(paddingRow);
     }
 
-    public int solvePart1(String path) {
+    @Override
+    public Integer solvePart1(String path) {
         List<List<Character>> inputMatrix = getInputMatrix(path);
         List<Part> parts = findPartNumbers(inputMatrix);
         return parts
@@ -22,7 +23,8 @@ public class Day3 {
                 .sum();
     }
 
-    public int solvePart2(String path) {
+    @Override
+    public Integer solvePart2(String path) {
         List<List<Character>> inputMatrix = getInputMatrix(path);
         List<Part> parts = findPartNumbers(inputMatrix);
         List<Gear> gears = findGears(inputMatrix);
@@ -43,7 +45,7 @@ public class Day3 {
                 .stream()
                 .filter(part -> part.surroundingCells.contains('*'))
                 .toList()) {
-            Integer partNumberStartColumn = part.endColumn - part.value.length() + 1;
+            int partNumberStartColumn = part.endColumn - part.value.length() + 1;
             Integer partNumberEndColumn = part.endColumn;
             Integer partNumberRow = part.row;
             gears

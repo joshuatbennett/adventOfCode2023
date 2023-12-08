@@ -7,10 +7,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.lang.Integer.MIN_VALUE;
 import static org.example.Utils.readValuesFromCSV;
 
-public class Day2 {
+public class Day2 implements Day {
 
     Map<String, Integer> blockCounts = Map.of("red", 12, "blue", 14, "green", 13);
 
+    @Override
     public Integer solvePart1(String path) {
         List<Game> validGames = readValuesFromCSV(path)
                 .stream()
@@ -24,6 +25,7 @@ public class Day2 {
                 .sum();
     }
 
+    @Override
     public Integer solvePart2(String path) {
         List<Game> games = readValuesFromCSV(path)
                 .stream()

@@ -6,7 +6,7 @@ import java.util.Map;
 
 import static org.example.Utils.readValuesFromCSV;
 
-public class Day1 {
+public class Day1 implements Day {
     Map<String, String> stringNumberMap = Map.of(
             "one", "1",
             "two", "2",
@@ -19,12 +19,14 @@ public class Day1 {
             "nine", "9"
     );
 
+    @Override
     public Integer solvePart1(String path) {
         List<String> values = readValuesFromCSV(path);
         List<Integer> numbers = extractNumbers(values);
         return numbers.stream().mapToInt(x -> x).sum();
     }
 
+    @Override
     public Integer solvePart2(String path) {
         List<String> values = convertStringNumbersToIntegers(readValuesFromCSV(path));
         List<Integer> numbers = extractNumbers(values);
