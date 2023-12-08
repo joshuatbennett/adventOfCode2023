@@ -1,143 +1,188 @@
 package org.example;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class Day3 {
-    public class Symbol {
-        private boolean hasAdjacentSymbol;
-        private Integer startColumn;
-        private final String value;
-        private final Integer row;
-        private Integer endColumn;
-        private List<Character> surroundingCells;
-
-        public Symbol(Integer row, String value) {
-            this.startColumn = -1;
-            this.endColumn = -1;
-            this.row = row;
-            this.value = value;
-            this.hasAdjacentSymbol = false;
-        }
-
-        public void setColumns(int startIndex) {
-            this.startColumn = startIndex;
-            this.endColumn = startIndex + value.length()-1;
-        }
-
-        public void setSurroundingCells(List<String> board) {
-            List<Character> surroundingCells = new ArrayList<>();
-            List<char[]> boardMatrix = new ArrayList<>();
-            board.forEach(row -> boardMatrix.add(row.toCharArray()));
-            if(startColumn > 0)
-                surroundingCells.add(boardMatrix.get(this.row)[this.startColumn-1]);
-            if(endColumn < boardMatrix.get(0).length-1)
-                surroundingCells.add(boardMatrix.get(this.row)[this.endColumn+1]);
-            if(row > 0) {
-                if(startColumn > 0)
-                    surroundingCells.add(boardMatrix.get(this.row-1)[this.startColumn-1]);
-                if(endColumn < boardMatrix.get(0).length-1)
-                    surroundingCells.add(boardMatrix.get(this.row-1)[this.endColumn+1]);
-                for (int i = startColumn; i <= endColumn; i++) {
-                    surroundingCells.add(boardMatrix.get(this.row - 1)[i]);
-                }
-            }
-            if(row < board.size()-1) {
-                if(startColumn > 0)
-                    surroundingCells.add(boardMatrix.get(this.row+1)[this.startColumn-1]);
-                if(endColumn < boardMatrix.get(0).length-1)
-                    surroundingCells.add(boardMatrix.get(this.row+1)[this.endColumn+1]);
-                for (int i = startColumn; i <= endColumn; i++) {
-                    surroundingCells.add(boardMatrix.get(this.row + 1)[i]);
-                }
-            }
-
-            this.surroundingCells = surroundingCells;
-        }
-
-        public void setHasAdjacentSymbol() {
-            this.hasAdjacentSymbol = this.surroundingCells.stream().anyMatch(cell -> !cell.equals('.'));
-        }
-
-        public boolean hasAdjacentSymbol() {
-            return hasAdjacentSymbol;
-        }
-
-        public String getValue() {
-            return value;
-        }
+    private static void addPaddingRows(List<List<Character>> inputMatrix) {
+        int rows = inputMatrix.get(0).size();
+        List<Character> paddingRow = Collections.nCopies(rows, '.').stream().toList();
+        inputMatrix.add(0, paddingRow);
+        inputMatrix.add(paddingRow);
     }
 
     public int solvePart1(String path) {
-        List<Symbol> symbols = new ArrayList<>();
+        List<List<Character>> inputMatrix = getInputMatrix(path);
+        List<Part> parts = findPartNumbers(inputMatrix);
+        return parts
+                .stream()
+                .filter(part -> part.isValid)
+                .mapToInt(part -> Integer.parseInt(part.value))
+                .sum();
+    }
+
+    public int solvePart2(String path) {
+        List<List<Character>> inputMatrix = getInputMatrix(path);
+        List<Part> parts = findPartNumbers(inputMatrix);
+        List<Gear> gears = findGears(inputMatrix);
+        gears.forEach(gear -> findSurroundingCells(gear.row, gear.column, 1, inputMatrix));
+        setGearPartNumbers(gears, parts);
+        List<Gear> validGears = gears
+                .stream()
+                .filter(gear -> gear.parts.size() == 2)
+                .toList();
+        return validGears
+                .stream()
+                .mapToInt(Gear::getGearRatio)
+                .sum();
+    }
+
+    private void setGearPartNumbers(List<Gear> gears, List<Part> parts) {
+        for (Part part : parts
+                .stream()
+                .filter(part -> part.surroundingCells.contains('*'))
+                .toList()) {
+            Integer partNumberStartColumn = part.endColumn - part.value.length() + 1;
+            Integer partNumberEndColumn = part.endColumn;
+            Integer partNumberRow = part.row;
+            gears
+                    .stream()
+                    .filter(gear -> gear.row >= partNumberRow - 1)
+                    .filter(gear -> gear.row <= partNumberRow + 1)
+                    .filter(gear -> gear.column >= partNumberStartColumn - 1)
+                    .filter(gear -> gear.column <= partNumberEndColumn + 1)
+                    .findFirst()
+                    .ifPresent(nearbyGear -> nearbyGear.addPartNumber(part));
+        }
+    }
+
+    private List<Character> findSurroundingCells(int rowNumber, int endColumn, int valueLength, List<List<Character>> inputMatrix) {
+        List<Character> surroundingCells = new ArrayList<>();
+        List<Character> rowBefore = inputMatrix
+                .get(rowNumber - 1)
+                .subList(endColumn - valueLength, endColumn + 2);
+        List<Character> row = inputMatrix
+                .get(rowNumber)
+                .subList(endColumn - valueLength, endColumn + 2);
+        List<Character> rowAfter = inputMatrix
+                .get(rowNumber + 1)
+                .subList(endColumn - valueLength, endColumn + 2);
+
+        surroundingCells.addAll(rowBefore);
+        surroundingCells.addAll(rowAfter);
+        surroundingCells.add(row.get(0));
+        surroundingCells.add(row.get(row.size() - 1));
+
+        return surroundingCells;
+    }
+
+    private List<List<Character>> getInputMatrix(String path) {
         List<String> rows = Utils.readValuesFromCSV(path);
-        addSymbols(rows, symbols, Pattern.compile("[\\d]*"));
-        symbols.forEach(symbol -> findStartColumn(symbol, rows));
-        symbols.forEach(symbol -> symbol.setSurroundingCells(rows));
-        symbols.forEach(Symbol::setHasAdjacentSymbol);
-
-        symbols.stream().filter(Symbol::hasAdjacentSymbol).toList().forEach(symbol -> System.out.println(symbol.value));
-        return symbols.stream().filter(Symbol::hasAdjacentSymbol).mapToInt(s -> Integer.parseInt(s.getValue())).sum();
+        List<List<Character>> inputMatrix = new ArrayList<>();
+        rows.forEach(row -> {
+            List<Character> inputMatrixRow = new ArrayList<>();
+            for (int i = 0; i < row.toCharArray().length; i++) {
+                inputMatrixRow.add(row.charAt(i));
+            }
+            inputMatrix.add(inputMatrixRow);
+        });
+        return padMatrix(inputMatrix);
     }
 
-    private void searchForAdjacentSymbols(Symbol symbol, List<String> rows) {
-        int rowCount = rows.size();
-        int columnCount = rows.get(0).length();
-        char symbolToLeft = '.';
-        char symbolToRight = '.';
-        List<Character> symbolsAbove = new ArrayList<>();
-        List<Character> symbolsBelow = new ArrayList<>();
+    private List<List<Character>> padMatrix(List<List<Character>> inputMatrix) {
+        addPaddingColumns(inputMatrix);
+        addPaddingRows(inputMatrix);
+        return inputMatrix;
+    }
 
-        if(symbol.startColumn > 0)
-            symbolToLeft = rows.get(symbol.row).charAt(symbol.startColumn - 1);
+    private void addPaddingColumns(List<List<Character>> inputMatrix) {
+        inputMatrix.forEach(row -> {
+            row.add(0, '.');
+            row.add('.');
+        });
+    }
 
-        if(symbol.endColumn < rows.get(0).length() -1)
-            symbolToRight = rows.get(symbol.row).charAt(symbol.endColumn + 1);
+    private List<Gear> findGears(List<List<Character>> inputMatrix) {
+        List<Gear> gears = new ArrayList<>();
+        int rowCount = inputMatrix.size();
+        int columnCount = inputMatrix.get(0).size();
+        for (int i = 0; i < rowCount; i++) {
+            for (int j = 0; j < columnCount; j++) {
+                if (inputMatrix.get(i).get(j) == '*') {
+                    gears.add(new Gear(i, j));
+                }
+            }
+        }
+        return gears;
+    }
 
-        if(symbol.row > 0) {
-            for (int i = symbol.startColumn - 1; i < symbol.endColumn + 2; i++) {
-                if(i >= 0 && i < columnCount) {
-                    char character = rows.get(symbol.row - 1).charAt(i);
-                    if(character != '.'){
-                        symbolsAbove.add(character);
+    private List<Part> findPartNumbers(List<List<Character>> inputMatrix) {
+        List<Part> parts = new ArrayList<>();
+        int rowCount = inputMatrix.size();
+        int columnCount = inputMatrix.get(0).size();
+        for (int i = 0; i < rowCount; i++) {
+            String number = "";
+            for (int j = 0; j < columnCount; j++) {
+                Character cell = inputMatrix.get(i).get(j);
+                if (Character.isDigit(cell)) {
+                    number = String.format("%s%s", number, cell);
+                    Character nextCell = inputMatrix.get(i).get(j + 1);
+                    if (!Character.isDigit(nextCell)) {
+                        parts.add(new Part(i, number, j));
+                        number = "";
                     }
                 }
             }
         }
 
-        if(symbol.row < rowCount - 1) {
-            for (int i = symbol.startColumn - 1; i < symbol.endColumn + 2; i++) {
-                if(i >= 0 && i < columnCount) {
-                    char character = rows.get(symbol.row + 1).charAt(i);
-                    if(character != '.'){
-                        symbolsBelow.add(character);
-                    }
-                }
-            }
+        parts.forEach(part -> part.setSurroudingCells(findSurroundingCells(part.row, part.endColumn, part.value.length(), inputMatrix)));
+        parts.forEach(Part::setIsValid);
+        return parts;
+    }
+
+    public static class Gear {
+        private final int row;
+        private final int column;
+        private final List<Part> parts;
+
+        public Gear(int row, int column) {
+            this.row = row;
+            this.column = column;
+            this.parts = new ArrayList<>();
         }
 
-        if(symbolToLeft != '.' || symbolToRight != '.' || !symbolsAbove.isEmpty() || !symbolsBelow.isEmpty()) {
-            symbol.setHasAdjacentSymbol();
+        public void addPartNumber(Part part) {
+            parts.add(part);
+        }
+
+        public int getGearRatio() {
+            return Integer.parseInt(this.parts.get(0).value) * Integer.parseInt(this.parts.get(1).value);
         }
     }
 
-    private void findStartColumn(Symbol symbol, List<String> x) {
-        symbol.setColumns(x.get(symbol.row).indexOf(symbol.value));
-    }
+    public static class Part {
+        private final Integer endColumn;
+        private final String value;
+        private final Integer row;
 
-    private void addSymbols(List<String> x, List<Symbol> symbols, Pattern pattern) {
-        for(int i = 0; i < x.size(); i++) {
-            String row = x.get(i);
-            Matcher matcher = pattern.matcher(row);
-            while(matcher.find()) {
-                String value = matcher.group(0);
-                if(!value.isEmpty()) {
-                    symbols.add(new Symbol(i, value));
-                }
-            }
+        private boolean isValid;
+        private List<Character> surroundingCells;
+
+        public Part(Integer row, String value, int endColumn) {
+            this.endColumn = endColumn;
+            this.row = row;
+            this.value = value;
+            this.isValid = false;
+            this.surroundingCells = new ArrayList<>();
+        }
+
+        public void setIsValid() {
+            this.isValid = this.surroundingCells.stream().filter(cell -> !Character.isDigit(cell)).anyMatch(cell -> cell != '.');
+        }
+
+        public void setSurroudingCells(List<Character> surroundingCells) {
+            this.surroundingCells = surroundingCells;
         }
     }
 }
